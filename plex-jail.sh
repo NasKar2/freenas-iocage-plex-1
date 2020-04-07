@@ -70,6 +70,7 @@ rm /tmp/pkg.json
 
 iocage exec "${JAIL_NAME}" mkdir /config
 iocage exec "${JAIL_NAME}" mkdir /configs
+iocage exec "${JAIL_NAME}" mkdir -p /mnt/media
 iocage exec "${JAIL_NAME}" mkdir -p /usr/local/etc/pkg/repos
 iocage exec "${JAIL_NAME}" cp /etc/pkg/FreeBSD.conf /usr/local/etc/pkg/repos/
 iocage exec "${JAIL_NAME}" sed -i '' "s/quarterly/latest/" /usr/local/etc/pkg/repos/FreeBSD.conf
@@ -77,6 +78,7 @@ mkdir -p "${PLEX_CONFIG_PATH}"
 chown -R 972:972 "${PLEX_CONFIG_PATH}"
 iocage fstab -a "${JAIL_NAME}" "${PLEX_CONFIG_PATH}" /config nullfs rw 0 0
 iocage fstab -a "${JAIL_NAME}" "${CONFIGS_PATH}" /configs nullfs rw 0 0
+iocage fstab -a ${JAIL_NAME} ${POOL_PATH}/${MEDIA_LOCATION} /mnt/media nullfs rw 0 0
 if [ $USE_PLEXPASS -eq 1 ]; then
   iocage exec "${JAIL_NAME}" sysrc plexmediaserver_plexpass_enable="YES"
   iocage exec "${JAIL_NAME}" sysrc plexmediaserver_plexpass_support_path="/config"
