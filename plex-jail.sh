@@ -78,6 +78,7 @@ mkdir -p "${PLEX_CONFIG_PATH}"
 chown -R 972:972 "${PLEX_CONFIG_PATH}"
 iocage fstab -a "${JAIL_NAME}" "${PLEX_CONFIG_PATH}" /config nullfs rw 0 0
 iocage fstab -a "${JAIL_NAME}" "${CONFIGS_PATH}" /configs nullfs rw 0 0
+iocage fstab -a "${JAIL_NAME}" "${MEDIA_PATH}" /mnt/media nullfs ro 0 0
 iocage exec "${JAIL_NAME}" cp /configs/pkg.conf /usr/local/etc
 if ! iocage exec "${JAIL_NAME}" pkg install ${PLEXPKG}
 then
@@ -87,24 +88,40 @@ then
 	exit 1
 fi
 iocage exec "${JAIL_NAME}" rm /usr/local/etc/pkg.conf
+
 if [ $USE_BETA -eq 1 ]; then
   iocage exec "${JAIL_NAME}" sysrc plexmediaserver_plexpass_enable="YES"
   iocage exec "${JAIL_NAME}" sysrc plexmediaserver_plexpass_support_path="/config"
 else
   iocage exec "${JAIL_NAME}" sysrc plexmediaserver_enable="YES"
   iocage exec "${JAIL_NAME}" sysrc plexmediaserver_support_path="/config"
-  sed -i '' "s/_plexpass//" "${CONFIGS_PATH}"/update_packages
+echo "${CONFIGS_PATH}/update_packages"
+  iocage exec "${JAIL_NAME}" cp -f /configs/update_packages /tmp/update_packages
+  iocage exec "${JAIL_NAME}" sed -i '' "s/_plexpass//" /tmp/update_packages
 fi
+
+iocage exec "${JAIL_NAME}" service ${PLEXPKG} start
+iocage exec "${JAIL_NAME}" service ${PLEXPKG} stop
 
 #
 # Add media group and add to plex
-pw user add media -c media -u 8675309  -d /nonexistent -s /usr/bin/nologin
+iocage exec "${JAIL_NAME}" "pw user add media -c media -u 8675309  -d /nonexistent -s /usr/bin/nologin"
 #pw groupadd -n media -g 8675309
-pw groupmod media -m plex
+iocage exec "${JAIL_NAME}" "pw groupmod media -m plex"
 
-iocage exec "${JAIL_NAME}" crontab /configs/update_packages
+if [ $USE_BETA -eq 1 ]; then
+  iocage exec "${JAIL_NAME}" sysrc plexmediaserver_plexpass_user="media"
+  iocage exec "${JAIL_NAME}" sysrc plexmediaserver_plexpass_group="media"
+else
+  iocage exec "${JAIL_NAME}" sysrc plexmediaserver_user="media"
+  iocage exec "${JAIL_NAME}" sysrc plexmediaserver_group="media"
+fi
+
+iocage exec "${JAIL_NAME}" chown -R media:media /var/run/plex/ /config/
+
+iocage exec "${JAIL_NAME}" crontab /tmp/update_packages
 iocage fstab -r "${JAIL_NAME}" "${CONFIGS_PATH}" /configs nullfs rw 0 0
-iocage exec "${JAIL_NAME}" rm -rf /configs
+iocage exec "${JAIL_NAME}" rm -rf /configs /tmp/update_packages
 iocage restart "${JAIL_NAME}"
 
 echo "Installation Complete!"
