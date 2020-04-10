@@ -88,6 +88,12 @@ else
   sed -i '' "s/-plexpass//" "${CONFIGS_PATH}"/update_packages
 fi
 
+#
+# Add media group and add to plex
+pw user add media -c media -u 8675309  -d /nonexistent -s /usr/bin/nologin
+#pw groupadd -n media -g 8675309
+pw groupmod media -m plex
+
 iocage exec "${JAIL_NAME}" crontab /configs/update_packages
 iocage fstab -r "${JAIL_NAME}" "${CONFIGS_PATH}" /configs nullfs rw 0 0
 iocage exec "${JAIL_NAME}" rm -rf /configs
